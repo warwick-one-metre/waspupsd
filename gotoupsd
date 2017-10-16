@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.4
 #
 # This file is part of gotoupsd.
 #
@@ -21,89 +21,45 @@
 """Frontend for querying the GOTO UPSes via SNMP."""
 
 import datetime
-import subprocess
 import Pyro4
-import warwick.observatory as observatory
+from warwick.observatory.common import (
+    daemons,
+    log)
+
+from warwick.w1m.power import (
+    SNMPDevice,
+    APCUPSStatus,
+    APCUPSBatteryRemaining,
+    APCUPSBatteryHealthy,
+    APCUPSOutputLoad)
 
 # Timeout in seconds for SNMP commands
 SNMP_TIMEOUT = 2
 
-class ParameterType:
-    """Defines the way that an OID parameter should be handled"""
-    Bool, ReadOnlyBool, Int, ReadOnlyInt, ReadOnlyGauge = range(5)
-
-class ParameterOID:
-    """Object ID string used by the SNMP device"""
-    UPSStatus = '.1.3.6.1.4.1.318.1.1.1.4.1.1.0'
-    UPSBatteryRemaining = '.1.3.6.1.4.1.318.1.1.1.2.2.1.0'
-    UPSBatteryHealthy = '.1.3.6.1.4.1.318.1.1.1.2.2.4.0'
-    UPSOutputLoad = '.1.3.6.1.4.1.318.1.1.1.4.2.3.0'
-
-class APCDeviceParameter:
-    """Data structure encapsulating a PDU/UPS parameter"""
-    def __init__(self, name, oid_type, oid):
-        self.name = name
-        self.oid_type = oid_type
-        self.oid = oid
-
-    def parse_snmp_output(self, output):
-        """Convert a snmp output string for this parameter into a python value"""
-        parts = output.split(' ')
-
-        if self.oid_type == ParameterType.ReadOnlyGauge and parts[-2] != 'Gauge32:':
-            raise Exception('Unabled to parse Gauge32 from SNMP output: ' + output)
-        elif self.oid_type != ParameterType.ReadOnlyGauge and parts[-2] != 'INTEGER:':
-            raise Exception('Unabled to parse integer from SNMP output: ' + output)
-
-        if self.oid_type == ParameterType.Bool or self.oid_type == ParameterType.ReadOnlyBool:
-            return int(parts[-1]) == 1
-
-        return int(parts[-1])
 
 MAIN_UPS_IP = '10.2.6.1'
 MAIN_UPS_PARAMETERS = [
-    APCDeviceParameter('main_ups_status', ParameterType.ReadOnlyInt, ParameterOID.UPSStatus),
-    APCDeviceParameter('main_ups_battery_remaining', ParameterType.ReadOnlyGauge,
-                       ParameterOID.UPSBatteryRemaining),
-    APCDeviceParameter('main_ups_battery_healthy', ParameterType.ReadOnlyBool,
-                       ParameterOID.UPSBatteryHealthy),
-    APCDeviceParameter('main_ups_load', ParameterType.ReadOnlyGauge, ParameterOID.UPSOutputLoad),
+    APCUPSStatus('main_ups_status'),
+    APCUPSBatteryRemaining('main_ups_battery_remaining'),
+    APCUPSBatteryHealthy('main_ups_battery_healthy'),
+    APCUPSOutputLoad('main_ups_load'),
 ]
 
 DOME_UPS_IP = '10.2.6.2'
 DOME_UPS_PARAMETERS = [
-    APCDeviceParameter('dome_ups_status', ParameterType.ReadOnlyInt, ParameterOID.UPSStatus),
-    APCDeviceParameter('dome_ups_battery_remaining', ParameterType.ReadOnlyGauge,
-                       ParameterOID.UPSBatteryRemaining),
-    APCDeviceParameter('dome_ups_battery_healthy', ParameterType.ReadOnlyBool,
-                       ParameterOID.UPSBatteryHealthy),
-    APCDeviceParameter('dome_ups_load', ParameterType.ReadOnlyGauge, ParameterOID.UPSOutputLoad),
+    APCUPSStatus('dome_ups_status'),
+    APCUPSBatteryRemaining('dome_ups_battery_remaining'),
+    APCUPSBatteryHealthy('dome_ups_battery_healthy'),
+    APCUPSOutputLoad('dome_ups_load'),
 ]
-
-class APCDevice:
-    """Wrapper for querying an APC PDU or UPS via SNMP"""
-    def __init__(self, ip, parameters):
-        self._ip = ip
-        self.parameters = parameters
-        self.parameters_by_name = {p.name: p for p in parameters}
-
-    def status(self):
-        """Return a dictionary of parameter values for this device"""
-        # Query all OIDs at once for efficiency
-        oids = [p.oid for p in self.parameters]
-        args = ['/usr/bin/snmpget', '-v', '1', '-c', 'public', self._ip] + oids
-        output = subprocess.check_output(args, universal_newlines=True, timeout=SNMP_TIMEOUT)
-        lines = output.strip().split('\n')
-
-        # Return a dictionary of values keyed by parameter name
-        return {k.name: k.parse_snmp_output(v) for k, v in zip(self.parameters, lines)}
 
 class UPSMonitorDaemon:
     """Wraps a SNMP request to the UPSes"""
     def __init__(self):
+        self._connection_error = False
         self._devices = [
-            APCDevice(MAIN_UPS_IP, MAIN_UPS_PARAMETERS),
-            APCDevice(DOME_UPS_IP, DOME_UPS_PARAMETERS),
+            SNMPDevice(MAIN_UPS_IP, MAIN_UPS_PARAMETERS, SNMP_TIMEOUT),
+            SNMPDevice(DOME_UPS_IP, DOME_UPS_PARAMETERS, SNMP_TIMEOUT),
         ]
 
         # Map of parameter name to device holding the parameter
@@ -120,14 +76,21 @@ class UPSMonitorDaemon:
             data = {'date': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}
             for device in self._devices:
                 data.update(device.status())
+
+            if self._connection_error:
+                log.info('gotoupsd', 'Restored connection to UPSes')
+                self._connection_error = False
             return data
 
         except Exception as exception:
             print('{} ERROR: failed to query SNMP: {}' \
                   .format(datetime.datetime.utcnow(), str(exception)))
-            observatory.log.error('powerd', 'Failed to query device (' \
-                                  + str(exception) + ')')
+
+            if not self._connection_error:
+                log.error('gotoupsd', 'Lost connection to UPSes')
+                self._connection_error = True
+
             return None
 
 if __name__ == '__main__':
-    observatory.daemons.goto_ups.launch(UPSMonitorDaemon())
+    daemons.goto_ups.launch(UPSMonitorDaemon())
