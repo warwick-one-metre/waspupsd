@@ -28,29 +28,28 @@ from warwick.observatory.common import (
 
 from warwick.w1m.power import (
     SNMPDevice,
-    APCUPSStatus,
-    APCUPSBatteryRemaining,
-    APCUPSBatteryHealthy,
-    APCUPSOutputLoad)
+    APCUPSStatusParameter,
+    APCUPSBatteryRemainingParameter,
+    APCUPSBatteryHealthyParameter,
+    APCUPSOutputLoadParameter)
 
 # Timeout in seconds for SNMP commands
 SNMP_TIMEOUT = 2
 
-
 MAIN_UPS_IP = '10.2.6.1'
 MAIN_UPS_PARAMETERS = [
-    APCUPSStatus('main_ups_status'),
-    APCUPSBatteryRemaining('main_ups_battery_remaining'),
-    APCUPSBatteryHealthy('main_ups_battery_healthy'),
-    APCUPSOutputLoad('main_ups_load'),
+    APCUPSStatusParameter('main_ups_status'),
+    APCUPSBatteryRemainingParameter('main_ups_battery_remaining'),
+    APCUPSBatteryHealthyParameter('main_ups_battery_healthy'),
+    APCUPSOutputLoadParameter('main_ups_load'),
 ]
 
 DOME_UPS_IP = '10.2.6.2'
 DOME_UPS_PARAMETERS = [
-    APCUPSStatus('dome_ups_status'),
-    APCUPSBatteryRemaining('dome_ups_battery_remaining'),
-    APCUPSBatteryHealthy('dome_ups_battery_healthy'),
-    APCUPSOutputLoad('dome_ups_load'),
+    APCUPSStatusParameter('dome_ups_status'),
+    APCUPSBatteryRemainingParameter('dome_ups_battery_remaining'),
+    APCUPSBatteryHealthyParameter('dome_ups_battery_healthy'),
+    APCUPSOutputLoadParameter('dome_ups_load'),
 ]
 
 class UPSMonitorDaemon:
