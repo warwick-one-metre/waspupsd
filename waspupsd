@@ -1,13 +1,13 @@
 #!/usr/bin/env python3.6
 #
-# This file is part of gotoupsd.
+# This file is part of waspupsd.
 #
-# gotoupsd is free software: you can redistribute it and/or modify
+# waspupsd is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# gotoupsd is distributed in the hope that it will be useful,
+# waspupsd is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -18,7 +18,7 @@
 # pylint: disable=broad-except
 # pylint: disable=too-few-public-methods
 
-"""Frontend for querying the GOTO UPSes via SNMP."""
+"""Frontend for querying the SuperWASP UPSes via SNMP."""
 
 import datetime
 import Pyro4
@@ -36,20 +36,20 @@ from warwick.observatory.power import (
 # Timeout in seconds for SNMP commands
 SNMP_TIMEOUT = 2
 
-MAIN_UPS_IP = '10.2.6.1'
-MAIN_UPS_PARAMETERS = [
-    APCUPSStatusParameter('main_ups_status'),
-    APCUPSBatteryRemainingParameter('main_ups_battery_remaining'),
-    APCUPSBatteryHealthyParameter('main_ups_battery_healthy'),
-    APCUPSOutputLoadParameter('main_ups_load'),
+UPS1_IP = '10.2.6.220'
+UPS1_PARAMETERS = [
+    APCUPSStatusParameter('ups1_status'),
+    APCUPSBatteryRemainingParameter('ups1_battery_remaining'),
+    APCUPSBatteryHealthyParameter('ups1_battery_healthy'),
+    APCUPSOutputLoadParameter('ups1_load'),
 ]
 
-DOME_UPS_IP = '10.2.6.2'
-DOME_UPS_PARAMETERS = [
-    APCUPSStatusParameter('dome_ups_status'),
-    APCUPSBatteryRemainingParameter('dome_ups_battery_remaining'),
-    APCUPSBatteryHealthyParameter('dome_ups_battery_healthy'),
-    APCUPSOutputLoadParameter('dome_ups_load'),
+UPS2_IP = '10.2.6.221'
+UPS2_PARAMETERS = [
+    APCUPSStatusParameter('ups2_status'),
+    APCUPSBatteryRemainingParameter('ups2_battery_remaining'),
+    APCUPSBatteryHealthyParameter('ups2_battery_healthy'),
+    APCUPSOutputLoadParameter('ups2_load'),
 ]
 
 class UPSMonitorDaemon:
@@ -57,8 +57,8 @@ class UPSMonitorDaemon:
     def __init__(self):
         self._connection_error = False
         self._devices = [
-            SNMPDevice('gotoupsd', MAIN_UPS_IP, MAIN_UPS_PARAMETERS, SNMP_TIMEOUT),
-            SNMPDevice('gotoupsd', DOME_UPS_IP, DOME_UPS_PARAMETERS, SNMP_TIMEOUT),
+            SNMPDevice('waspupsd', UPS1_IP, UPS1_PARAMETERS, SNMP_TIMEOUT),
+            SNMPDevice('waspupsd', UPS2_IP, UPS2_PARAMETERS, SNMP_TIMEOUT),
         ]
 
         # Map of parameter name to device holding the parameter
@@ -77,7 +77,7 @@ class UPSMonitorDaemon:
                 data.update(device.status())
 
             if self._connection_error:
-                log.info('gotoupsd', 'Restored connection to UPSes')
+                log.info('waspupsd', 'Restored connection to UPSes')
                 self._connection_error = False
             return data
 
@@ -86,10 +86,10 @@ class UPSMonitorDaemon:
                   .format(datetime.datetime.utcnow(), str(exception)))
 
             if not self._connection_error:
-                log.error('gotoupsd', 'Lost connection to UPSes')
+                log.error('waspupsd', 'Lost connection to UPSes')
                 self._connection_error = True
 
             return None
 
 if __name__ == '__main__':
-    daemons.goto_ups.launch(UPSMonitorDaemon())
+    daemons.superwasp_ups.launch(UPSMonitorDaemon())

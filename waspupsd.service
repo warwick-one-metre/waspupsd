@@ -7,9 +7,9 @@ After=network-online.target
 [Service]
 Restart=on-failure
 Type=simple
-ExecStart=/usr/bin/env python3.6 -u /usr/bin/gotoupsd
-ExecStartPost=/usr/bin/env python3.6 -u /usr/bin/obslog info gotoupsd Started by systemd
-ExecStopPost=/usr/bin/env python3.6 -u /usr/bin/obslog info gotoupsd Stopped by systemd
+ExecStart=/usr/bin/env python3.6 -u /usr/bin/waspupsd
+ExecStartPost=/usr/bin/env python3.6 -u /usr/bin/obslog info waspupsd Started by systemd
+ExecStopPost=/usr/bin/env python3.6 -u /usr/bin/obslog info waspupsd Stopped by systemd
 StandardOutput=syslog
 StandardError=syslog
 
