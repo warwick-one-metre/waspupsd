@@ -1,5 +1,5 @@
 Name:      goto-ups-server
-Version:   2.1.0
+Version:   2.1.1
 Release:   0
 Url:       https://github.com/warwick-one-metre/gotoupsd
 Summary:   Pyro frontend for monitoring the GOTO UPSes via SNMP.

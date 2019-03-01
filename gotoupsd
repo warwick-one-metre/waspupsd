@@ -57,8 +57,8 @@ class UPSMonitorDaemon:
     def __init__(self):
         self._connection_error = False
         self._devices = [
-            SNMPDevice(MAIN_UPS_IP, MAIN_UPS_PARAMETERS, SNMP_TIMEOUT),
-            SNMPDevice(DOME_UPS_IP, DOME_UPS_PARAMETERS, SNMP_TIMEOUT),
+            SNMPDevice('gotoupsd', MAIN_UPS_IP, MAIN_UPS_PARAMETERS, SNMP_TIMEOUT),
+            SNMPDevice('gotoupsd', DOME_UPS_IP, DOME_UPS_PARAMETERS, SNMP_TIMEOUT),
         ]
 
         # Map of parameter name to device holding the parameter
